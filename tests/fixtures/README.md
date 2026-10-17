@@ -12,4 +12,4 @@ Model directories contain unchanged variant files and the corresponding `LICENSE
 - CesiumMilkTruck: noncommuting parent/child transforms and material factors.
 - UnlitTest: `KHR_materials_unlit` mapping against GLTFLoader's basic material.
 
-`required-draco.gltf` is an authored refusal fixture, under this package's MIT license. It needs no geometry to exercise required-extension validation.
+`required-draco.gltf` and `required-meshopt.gltf` are authored refusal fixtures under this package's MIT license. The meshopt fixture has a URI-less fallback buffer and an external compressed buffer; refusal must precede resolving either one.

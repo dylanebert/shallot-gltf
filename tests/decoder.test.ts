@@ -119,6 +119,19 @@ test("required cut extension refuses by name; optional cuts and ignored maps are
     expect(scene.materials[0].unlit).toBe(true);
 });
 
+test("loadGltf refuses required meshopt by name before resolving its URI-less fallback buffer", async () => {
+    const url = new URL("./fixtures/required-meshopt.gltf", import.meta.url);
+    const requests: string[] = [];
+    const read: typeof fetch = (async (input: URL | string) => {
+        requests.push(String(input));
+        return String(input) === url.href
+            ? new Response(readFileSync(url))
+            : new Response(new Uint8Array(16));
+    }) as typeof fetch;
+    await expect(loadGltf(url, read)).rejects.toThrow("EXT_meshopt_compression");
+    expect(requests).toEqual([url.href]);
+});
+
 test("missing normals split shared corners into flat faces and preserve UVs", () => {
     const positions = new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]);
     const uv = new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]);

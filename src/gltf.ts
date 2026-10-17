@@ -321,25 +321,35 @@ function decodeMesh(
     };
 }
 
+function supportedExtension(name: string): boolean {
+    return name === "KHR_materials_unlit";
+}
+
+/** Refuses unsupported required extensions before their resources are read. */
+export function validateRequiredExtensions(gltf: GltfJson): void {
+    for (const name of gltf.extensionsRequired ?? []) {
+        if (!supportedExtension(name))
+            throw new Error(`Unsupported required glTF extension: ${name}`);
+    }
+}
+
 /** Decodes resolved buffers without a device. Required unsupported extensions refuse by name.
  * Instances retain column-major world matrices, including shear; geometry stays mesh-local.
  */
 export function parse(gltf: GltfJson, buffers: ArrayBuffer[]): GltfScene {
-    const supported = new Set(["KHR_materials_unlit"]);
-    for (const name of gltf.extensionsRequired ?? []) {
-        if (!supported.has(name)) throw new Error(`Unsupported required glTF extension: ${name}`);
-    }
+    validateRequiredExtensions(gltf);
     const ignored = new Set<string>();
     const scan = (value: unknown): void => {
         if (!value || typeof value !== "object") return;
         for (const [key, child] of Object.entries(value)) {
             if (key === "extensions") {
-                for (const name of Object.keys(child)) if (!supported.has(name)) ignored.add(name);
+                for (const name of Object.keys(child))
+                    if (!supportedExtension(name)) ignored.add(name);
             } else scan(child);
         }
     };
     scan(gltf);
-    for (const name of gltf.extensionsUsed ?? []) if (!supported.has(name)) ignored.add(name);
+    for (const name of gltf.extensionsUsed ?? []) if (!supportedExtension(name)) ignored.add(name);
     if (gltf.skins?.length) ignored.add("skin");
     if (gltf.animations?.length) ignored.add("animation");
     if ("cameras" in gltf) ignored.add("camera");

@@ -2,7 +2,7 @@ export { isGlb, parseGlb } from "./glb";
 export { type GltfJson, type GltfMaterial, type GltfMesh, type GltfScene, parse } from "./gltf";
 
 import { isGlb, parseGlb } from "./glb";
-import { type GltfJson, type GltfScene, parse } from "./gltf";
+import { type GltfJson, type GltfScene, parse, validateRequiredExtensions } from "./gltf";
 
 /** Reads a glTF or GLB URL and resolves external and data-URI buffers with the supplied fetch.
  * Image sources are returned without decoding; loading performs no GPU work.
@@ -15,6 +15,7 @@ export async function loadGltf(url: string | URL, read: typeof fetch = fetch): P
     const { json, bin } = isGlb(bytes)
         ? parseGlb(bytes)
         : { json: JSON.parse(new TextDecoder().decode(bytes)) as GltfJson, bin: undefined };
+    validateRequiredExtensions(json);
     const buffers = await Promise.all(
         (json.buffers ?? []).map(async (buffer) => {
             if (!buffer.uri) {
