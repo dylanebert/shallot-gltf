@@ -21,4 +21,6 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun check
       - run: bun run lint
+      - name: Install software Vulkan device
+        run: sudo apt-get update && sudo apt-get install -y mesa-vulkan-drivers
       - run: bun run test

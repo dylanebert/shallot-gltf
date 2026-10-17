@@ -1,12 +1,10 @@
 import { expect, setDefaultTimeout, test } from "bun:test";
-import { createApp, GlobalTransform, MeshInstance, MeshMaterial } from "@dylanebert/shallot";
+import { GlobalTransform, MeshInstance, MeshMaterial } from "@dylanebert/shallot";
 import { TIMEOUT } from "@dylanebert/shallot/testing";
+import { openGpuApp as createApp } from "@dylanebert/shallot/testing/gpu";
 import { Model, ModelPlugin } from "../src/model";
 
 setDefaultTimeout(TIMEOUT.node);
-const peer = "bun-webgpu";
-const { setupGlobals } = (await import(peer)) as { setupGlobals(): Promise<void> };
-await setupGlobals();
 
 test("the composed app derives the truck's placed mesh and material instances", async () => {
     const app = await createApp({

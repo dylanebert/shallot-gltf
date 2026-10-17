@@ -2,7 +2,6 @@ import { afterAll, beforeAll, expect, setDefaultTimeout, spyOn, test } from "bun
 import {
     type App,
     Camera,
-    createApp,
     ImageAddressMode,
     Materials,
     Meshes,
@@ -20,6 +19,8 @@ import {
 import { attachTexture, captureTexture, ImageBindings } from "@dylanebert/shallot/rendering";
 import { MeshRenderPlugin, StandardRenderingPlugin } from "@dylanebert/shallot/standard/rendering";
 import { TIMEOUT } from "@dylanebert/shallot/testing";
+import { openGpuApp as createApp } from "@dylanebert/shallot/testing/gpu";
+import { setupGlobals } from "@dylanebert/shallot/webgpu";
 import { type Gltf, loadGltf, loadGltfScene, spawnGltfScene } from "../src";
 
 setDefaultTimeout(TIMEOUT.gpu);
@@ -84,15 +85,20 @@ function camera(world: World) {
     cameras.push(eid);
 }
 beforeAll(async () => {
-    const peerModule = "bun-webgpu";
-    const { setupGlobals } = (await import(peerModule)) as { setupGlobals(): Promise<void> };
     await setupGlobals();
     const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter) throw new Error("GPU test needs an adapter");
+    if (!adapter || adapter.info.device === "null-backend") {
+        throw new Error("GPU tests require a rendering adapter, not a missing or null device");
+    }
     device = await adapter.requestDevice({ requiredFeatures: ["indirect-first-instance"] });
     console.log(
         JSON.stringify({
-            adapter: adapter.info,
+            adapter: {
+                vendor: adapter.info.vendor,
+                architecture: adapter.info.architecture,
+                device: adapter.info.device,
+                description: adapter.info.description,
+            },
             features: [...device.features],
             limits: device.limits,
         }),
@@ -186,7 +192,7 @@ beforeAll(async () => {
             device,
             adapter,
         });
-        // bun-webgpu has no bitmap decoder; supply the fixture's decoded pixels, retaining registered settings.
+        // Headless Dawn has no bitmap decoder; retain registered settings with decoded fixture pixels.
         const texture = device.createTexture({
             size: [2, 2, 1],
             format: "rgba8unorm-srgb",

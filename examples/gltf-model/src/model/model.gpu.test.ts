@@ -1,14 +1,12 @@
 import { afterAll, beforeAll, expect, setDefaultTimeout, test } from "bun:test";
-import { type App, createApp, Transform } from "@dylanebert/shallot";
+import { type App, Transform } from "@dylanebert/shallot";
 import { TIMEOUT } from "@dylanebert/shallot/testing";
+import { openGpuApp as createApp } from "@dylanebert/shallot/testing/gpu";
 import { Model, ModelPlugin } from "./index";
 
 setDefaultTimeout(TIMEOUT.gpu);
 let app: App;
 beforeAll(async () => {
-    const peer = "bun-webgpu";
-    const { setupGlobals } = (await import(peer)) as { setupGlobals(): Promise<void> };
-    await setupGlobals();
     app = await createApp({
         defaults: false,
         plugins: [
