@@ -47,18 +47,22 @@ export async function loadGltfScene(
     onProgress?.(0);
     const scene = await loadGltf(url);
     onProgress?.(0.5);
-    const images = scene.images.map((image) =>
-        registerImage(
+    const textures = scene.textures.map((texture) => {
+        if (texture.image === undefined) return undefined;
+        const image = scene.images[texture.image];
+        return registerImage(
             world,
             image.uri ?? new Blob([image.bytes!.slice().buffer], { type: image.mimeType }),
-        ),
-    );
+            { sampler: texture.sampler },
+        );
+    });
     const materials = world.resource(Materials);
     const handles = scene.materials.map((material) =>
         materials.add(
             StandardMaterial({
                 baseColor: material.color,
-                baseColorTexture: material.image === undefined ? undefined : images[material.image],
+                baseColorTexture:
+                    material.texture === undefined ? undefined : textures[material.texture],
                 metallic: material.metallic,
                 perceptualRoughness: material.roughness,
                 emissive: material.emissive,

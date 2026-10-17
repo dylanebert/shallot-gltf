@@ -32,11 +32,11 @@
         "test": "bun test"
     },
     "peerDependencies": {
-        "@dylanebert/shallot": "^0.10.0-next.4"
+        "@dylanebert/shallot": "^0.10.0-next.5"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.5.13",
-        "@dylanebert/shallot": "0.10.0-next.4",
+        "@dylanebert/shallot": "0.10.0-next.5",
         "@playwright/test": "^1.64.1",
         "@types/bun": "^1.4.3",
         "@types/three": "0.180.0",

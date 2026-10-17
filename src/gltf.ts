@@ -1,3 +1,8 @@
+import {
+    ImageAddressMode,
+    ImageFilterMode,
+    type ImageSamplerDescriptor,
+} from "@dylanebert/shallot/rendering";
 import { composeMat4 as compose, multiplyMat4 as multiply } from "@dylanebert/shallot/utils";
 
 const VERTEX_FLOATS = 8;
@@ -110,7 +115,7 @@ export interface GltfMesh {
 
 export interface GltfMaterial {
     color: [number, number, number, number];
-    image?: number;
+    texture?: number;
     metallic: number;
     roughness: number;
     emissive: [number, number, number];
@@ -123,6 +128,7 @@ export interface GltfScene {
     instances: { mesh: number; node: string; matrix: Float32Array }[];
     materials: GltfMaterial[];
     images: { uri?: string; bytes?: Uint8Array; mimeType?: string }[];
+    textures: { image?: number; sampler: ImageSamplerDescriptor }[];
     unsupported: string[];
 }
 const COMPONENTS = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT2: 4, MAT3: 9, MAT4: 16 } as const;
@@ -357,21 +363,7 @@ export function parse(gltf: GltfJson, buffers: ArrayBuffer[]): GltfScene {
         const pbr = m.pbrMetallicRoughness;
         if ((pbr?.baseColorTexture?.texCoord ?? 0) !== 0) ignored.add("baseColorTexture.texCoord");
         const texture = pbr?.baseColorTexture;
-        const source = texture === undefined ? undefined : gltf.textures?.[texture.index];
-        const image = (texture?.texCoord ?? 0) === 0 ? source?.source : undefined;
-        if (image !== undefined) {
-            const sampler =
-                source?.sampler === undefined ? undefined : gltf.samplers?.[source.sampler];
-            // glTF defaults wrapping to REPEAT; absent filters are implementation-defined.
-            // Shallot uses linear min/mag, nearest mip selection and clamp-to-edge wrapping.
-            if (
-                (sampler?.wrapS ?? 10497) !== 33071 ||
-                (sampler?.wrapT ?? 10497) !== 33071 ||
-                (sampler?.magFilter !== undefined && sampler.magFilter !== 9729) ||
-                (sampler?.minFilter !== undefined && sampler.minFilter !== 9985)
-            )
-                ignored.add("sampler");
-        }
+        const textureIndex = (texture?.texCoord ?? 0) === 0 ? texture?.index : undefined;
         for (const [name, value] of Object.entries({
             metallicRoughnessTexture: pbr?.metallicRoughnessTexture,
             normalTexture: m.normalTexture,
@@ -382,13 +374,44 @@ export function parse(gltf: GltfJson, buffers: ArrayBuffer[]): GltfScene {
             if (value) ignored.add(name);
         return {
             color: (pbr?.baseColorFactor ?? [1, 1, 1, 1]) as GltfMaterial["color"],
-            image,
+            texture: textureIndex,
             metallic: pbr?.metallicFactor ?? 1,
             roughness: pbr?.roughnessFactor ?? 1,
             emissive: (m.emissiveFactor ?? [0, 0, 0]) as GltfMaterial["emissive"],
             alphaMode: m.alphaMode ?? "OPAQUE",
             cutoff: m.alphaCutoff ?? 0.5,
             unlit: m.extensions?.KHR_materials_unlit !== undefined,
+        };
+    });
+    const addressMode = (wrap = 10497) =>
+        wrap === 33071
+            ? ImageAddressMode.ClampToEdge
+            : wrap === 33648
+              ? ImageAddressMode.MirrorRepeat
+              : ImageAddressMode.Repeat;
+    const textures = (gltf.textures ?? []).map((texture, index) => {
+        const sampler =
+            texture.sampler === undefined ? undefined : gltf.samplers?.[texture.sampler];
+        // Shallot selects the nearest mip; glTF's unspecified min filter follows GLTFLoader.
+        const min = sampler?.minFilter ?? 9987;
+        if (
+            materials.some((material) => material.texture === index) &&
+            min !== 9984 &&
+            min !== 9985
+        )
+            ignored.add("sampler.minFilter.mipSelection");
+        return {
+            image: texture.source,
+            sampler: {
+                addressModeU: addressMode(sampler?.wrapS),
+                addressModeV: addressMode(sampler?.wrapT),
+                magFilter:
+                    sampler?.magFilter === 9728 ? ImageFilterMode.Nearest : ImageFilterMode.Linear,
+                minFilter:
+                    min === 9728 || min === 9984 || min === 9986
+                        ? ImageFilterMode.Nearest
+                        : ImageFilterMode.Linear,
+            },
         };
     });
     const meshes: GltfMesh[] = [];
@@ -453,6 +476,7 @@ export function parse(gltf: GltfJson, buffers: ArrayBuffer[]): GltfScene {
         meshes,
         instances,
         materials,
+        textures,
         images: (gltf.images ?? []).map((image) => {
             if (image.bufferView === undefined) return { uri: image.uri, mimeType: image.mimeType };
             const view = gltf.bufferViews![image.bufferView];

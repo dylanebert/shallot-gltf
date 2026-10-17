@@ -6,7 +6,7 @@
       "name": "@dylanebert/shallot-gltf",
       "devDependencies": {
         "@biomejs/biome": "^2.5.13",
-        "@dylanebert/shallot": "0.10.0-next.4",
+        "@dylanebert/shallot": "0.10.0-next.5",
         "@playwright/test": "^1.64.1",
         "@types/bun": "^1.4.3",
         "@types/three": "0.180.0",
@@ -15,7 +15,7 @@
         "vite": "^8.3.4",
       },
       "peerDependencies": {
-        "@dylanebert/shallot": "^0.10.0-next.4",
+        "@dylanebert/shallot": "^0.10.0-next.5",
       },
     },
   },
@@ -58,7 +58,7 @@
 
     "@dimforge/rapier3d-compat": ["@dimforge/rapier3d-compat@0.12.0", "", {}, "sha512-uekIGetywIgopfD97oDL5PfeezkFpNhwlzlaEYNOA0N6ghdsOvh/HYjSMek5Q2O1PYvRSDFcqFVJl4r4ZBwOow=="],
 
-    "@dylanebert/shallot": ["@dylanebert/shallot@0.10.0-next.4", "", { "dependencies": { "@types/node": "^26.6.3", "@webgpu/types": "^0.1.74", "unplugin-typegpu": "~0.12.4" }, "peerDependencies": { "playwright": "^1.63.0", "typegpu": "~0.12.6", "vite": "^8.0.0", "webgpu": "^0.6.2" }, "optionalPeers": ["playwright", "webgpu"], "bin": { "shallot": "bin/shallot.ts" } }, "sha512-PcHzCX5QS084c09acbE/pUnMly/6hpm7tgAArlgwthtxa7Troz/BS/HDqFecFD+qTGXyaB/aau1cGZoiFyJv1A=="],
+    "@dylanebert/shallot": ["@dylanebert/shallot@0.10.0-next.5", "", { "dependencies": { "@types/node": "^26.6.3", "@webgpu/types": "^0.1.74", "unplugin-typegpu": "~0.12.4" }, "peerDependencies": { "playwright": "^1.63.0", "typegpu": "~0.12.6", "vite": "^8.0.0", "webgpu": "^0.6.2" }, "optionalPeers": ["playwright", "webgpu"], "bin": { "shallot": "bin/shallot.ts" } }, "sha512-O3Ky0LQ/EURZ3SB1SMt+urnh0/mNQpZOIGxW1CZ/enZX2eLmEWkd7w7HPHW0J5CA/LcnBmwRGkYSg3jEsBcrnQ=="],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
 

@@ -3,11 +3,13 @@ import {
     type App,
     Camera,
     createApp,
+    ImageAddressMode,
     Materials,
     Meshes,
     MeshInstance,
     MeshMaterial,
     type Plugin,
+    registerImage,
     StandardMaterial,
     StandardRenderer,
     Tonemapping,
@@ -15,10 +17,10 @@ import {
     Transform,
     type World,
 } from "@dylanebert/shallot";
-import { attachTexture, captureTexture } from "@dylanebert/shallot/rendering";
+import { attachTexture, captureTexture, ImageBindings } from "@dylanebert/shallot/rendering";
 import { MeshRenderPlugin, StandardRenderingPlugin } from "@dylanebert/shallot/standard/rendering";
 import { TIMEOUT } from "@dylanebert/shallot/testing";
-import { type Gltf, loadGltfScene, spawnGltfScene } from "../src";
+import { type Gltf, loadGltf, loadGltfScene, spawnGltfScene } from "../src";
 
 setDefaultTimeout(TIMEOUT.gpu);
 const vertices = new Float32Array([
@@ -143,6 +145,66 @@ beforeAll(async () => {
         app.world.step(0);
         await captureTexture(app.world, cameras.at(-1)!);
     }
+    const boxUrl = new URL("./fixtures/default-sampler.gltf", import.meta.url);
+    for (const direct of [false, true]) {
+        const subject: Plugin = {
+            name: "DefaultSampler",
+            dependencies: [StandardRenderingPlugin, MeshRenderPlugin],
+            async initialize(world) {
+                camera(world);
+                if (!direct) {
+                    spawnGltfScene(world, await loadGltfScene(world, boxUrl));
+                    return;
+                }
+                const scene = await loadGltf(boxUrl);
+                const image = registerImage(world, scene.images[0].uri!, {
+                    sampler: {
+                        addressModeU: ImageAddressMode.Repeat,
+                        addressModeV: ImageAddressMode.Repeat,
+                    },
+                });
+                const mesh = world.resource(Meshes).add(scene.meshes[0]);
+                const source = scene.materials[0];
+                const material = world.resource(Materials).add(
+                    StandardMaterial({
+                        baseColor: source.color,
+                        baseColorTexture: image,
+                        metallic: source.metallic,
+                        perceptualRoughness: source.roughness,
+                        unlit: true,
+                    }),
+                );
+                const eid = world.create();
+                world.add(eid, Transform, { rotation: [-Math.SQRT1_2, 0, 0, Math.SQRT1_2] });
+                world.add(eid, MeshInstance, { mesh });
+                world.add(eid, MeshMaterial, material);
+            },
+        };
+        const app = await createApp({
+            defaults: false,
+            plugins: [StandardRenderingPlugin, MeshRenderPlugin, subject],
+            device,
+            adapter,
+        });
+        // bun-webgpu has no bitmap decoder; supply the fixture's decoded pixels, retaining registered settings.
+        const texture = device.createTexture({
+            size: [2, 2, 1],
+            format: "rgba8unorm-srgb",
+            usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+        });
+        app.world.own(texture);
+        device.queue.writeTexture(
+            { texture },
+            new Uint8Array([255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 0, 255]),
+            { bytesPerRow: 8, rowsPerImage: 2 },
+            [2, 2, 1],
+        );
+        app.world.resource(ImageBindings).images = texture;
+        apps.push(app);
+        app.world.step(0);
+        app.world.step(0);
+        await captureTexture(app.world, cameras.at(-1)!);
+    }
 }, TIMEOUT.startup);
 afterAll(() => {
     for (const app of apps) app.dispose();
@@ -150,13 +212,23 @@ afterAll(() => {
 });
 test("loaded primitive placement and material draw the same pixels as direct authoring", async () => {
     const pixels = await Promise.all(
-        apps.map(async (app, i) => {
+        apps.slice(0, 2).map(async (app, i) => {
             app.world.step(0);
             return (await captureTexture(app.world, cameras[i])).rgba;
         }),
     );
     expect(pixels[0]).toEqual(pixels[1]);
     expect(pixels[0].some((value, i) => i % 4 === 0 && value > 150)).toBe(true);
+});
+test("a texture naming no sampler repeats outside [0, 1] like a directly registered image", async () => {
+    const pixels = await Promise.all(
+        apps.slice(2).map(async (app, i) => {
+            app.world.step(0);
+            return (await captureTexture(app.world, cameras[i + 2])).rgba;
+        }),
+    );
+    expect(pixels[0]).toEqual(pixels[1]);
+    expect(new Set(pixels[0]).size).toBeGreaterThan(10);
 });
 test("two placements reuse the load's exposed primitive handles and model-space matrix", () => {
     const world = apps[0].world;

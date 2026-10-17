@@ -19,6 +19,7 @@ const localFetch: typeof fetch = (async (input: URL | string) => {
     return url.protocol === "file:" ? new Response(readFileSync(fileURLToPath(url))) : fetch(url);
 }) as typeof fetch;
 const fixtures = [
+    "default-sampler.gltf",
     "BoxInterleaved/glTF/BoxInterleaved.gltf",
     "BoxTextured/glTF/BoxTextured.gltf",
     "BoxTextured/glTF-Binary/BoxTextured.glb",
@@ -51,6 +52,19 @@ for (const fixture of fixtures) {
             if (object instanceof Mesh) expected.push(object);
         });
         const result = await loadGltf(new URL(`file://${path}`), localFetch);
+        const wrap = (value: number) =>
+            (({ 1000: 1, 1001: 0, 1002: 2 }) as const)[value as 1000 | 1001 | 1002];
+        const filter = (value: number) => ([1003, 1004, 1005].includes(value) ? 0 : 1);
+        for (const [index, texture] of result.textures.entries()) {
+            const ref = await reference.parser.getDependency("texture", index);
+            expect(texture.image).toBe(reference.parser.json.textures[index].source);
+            expect(texture.sampler).toEqual({
+                addressModeU: wrap(ref.wrapS),
+                addressModeV: wrap(ref.wrapT),
+                magFilter: filter(ref.magFilter),
+                minFilter: filter(ref.minFilter),
+            });
+        }
         expect(result.instances.length).toBe(expected.length);
         for (const [i, instance] of result.instances.entries()) {
             const mesh = result.meshes[instance.mesh];
@@ -94,10 +108,12 @@ for (const fixture of fixtures) {
                 ref.transparent ? "BLEND" : ref.alphaTest > 0 ? "MASK" : "OPAQUE",
             );
             if (material.alphaMode === "MASK") expect(material.cutoff).toBe(ref.alphaTest);
-            expect(material.image !== undefined).toBe(ref.map !== null);
+            expect(material.texture !== undefined).toBe(ref.map !== null);
             if (ref.map) {
                 const texture = reference.parser.associations.get(ref.map)!.textures!;
-                expect(material.image).toBe(reference.parser.json.textures[texture].source);
+                expect(result.textures[material.texture!].image).toBe(
+                    reference.parser.json.textures[texture].source,
+                );
             }
             expect(material.unlit).toBe(unlit);
         }
