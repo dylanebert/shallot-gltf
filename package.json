@@ -1,6 +1,6 @@
 {
     "name": "@dylanebert/shallot-gltf",
-    "version": "0.10.0-next.1",
+    "version": "0.1.0-next.1",
     "description": "Experimental static glTF loading and placement for Shallot.",
     "license": "MIT",
     "author": "Dylan Ebert <dylan.ebert@gmail.com>",

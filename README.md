@@ -26,6 +26,12 @@ The game owns loading and placement; this package needs no plugin state. Call `l
 
 `loadGltf` and `parse` remain deviceless entry points. [examples/gltf-model](examples/gltf-model) loads the textured Khronos Cesium Milk Truck through the package name. Run it with `bunx vite examples/gltf-model`; check its presentation with `bunx playwright test -c examples/gltf-model --workers=1`.
 
+## Compatibility
+
+| shallot-gltf | Shallot |
+| --- | --- |
+| 0.1.0-next.1 | 0.10.0-next.5 and later 0.10 releases |
+
 ## Supported subset
 
 - `.gltf` and `.glb` v2, with external, data-URI or BIN buffers. `parse` accepts already-resolved buffers. External image URIs become absolute; embedded images expose their bytes. `loadGltfScene` registers these images in Shallot's shared sRGB image array; Shallot decodes them at warm.
