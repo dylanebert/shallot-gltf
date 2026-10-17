@@ -120,7 +120,7 @@ export interface GltfMaterial {
 }
 export interface GltfScene {
     meshes: GltfMesh[];
-    instances: { mesh: number; matrix: Float32Array }[];
+    instances: { mesh: number; node: string; matrix: Float32Array }[];
     materials: GltfMaterial[];
     images: { uri?: string; bytes?: Uint8Array; mimeType?: string }[];
     unsupported: string[];
@@ -430,7 +430,8 @@ export function parse(gltf: GltfJson, buffers: ArrayBuffer[]): GltfScene {
         const node = nodes[index];
         const matrix = multiply(parent, localMatrix(node, new Float32Array(16)));
         if (node.mesh !== undefined)
-            for (const mesh of meshEntries[node.mesh]) instances.push({ mesh, matrix });
+            for (const mesh of meshEntries[node.mesh])
+                instances.push({ mesh, node: node.name ?? `Node${index}`, matrix });
         for (const child of node.children ?? [])
             walk(child, matrix, new Set([...ancestors, index]));
     };
