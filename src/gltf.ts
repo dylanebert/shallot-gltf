@@ -9,7 +9,7 @@ export interface GltfJson {
     materials?: Material[];
     images?: { uri?: string; bufferView?: number; mimeType?: string }[];
     textures?: { source?: number; sampler?: number; extensions?: Extensions }[];
-    samplers?: object[];
+    samplers?: { wrapS?: number; wrapT?: number; magFilter?: number; minFilter?: number }[];
     nodes?: Node[];
     scenes?: { nodes?: number[] }[];
     scene?: number;
@@ -353,10 +353,25 @@ export function parse(gltf: GltfJson, buffers: ArrayBuffer[]): GltfScene {
     if (gltf.skins?.length) ignored.add("skin");
     if (gltf.animations?.length) ignored.add("animation");
     if ("cameras" in gltf) ignored.add("camera");
-    if (gltf.samplers?.length) ignored.add("sampler");
     const materials = (gltf.materials ?? []).map((m): GltfMaterial => {
         const pbr = m.pbrMetallicRoughness;
         if ((pbr?.baseColorTexture?.texCoord ?? 0) !== 0) ignored.add("baseColorTexture.texCoord");
+        const texture = pbr?.baseColorTexture;
+        const source = texture === undefined ? undefined : gltf.textures?.[texture.index];
+        const image = (texture?.texCoord ?? 0) === 0 ? source?.source : undefined;
+        if (image !== undefined) {
+            const sampler =
+                source?.sampler === undefined ? undefined : gltf.samplers?.[source.sampler];
+            // glTF defaults wrapping to REPEAT; absent filters are implementation-defined.
+            // Shallot uses linear min/mag, nearest mip selection and clamp-to-edge wrapping.
+            if (
+                (sampler?.wrapS ?? 10497) !== 33071 ||
+                (sampler?.wrapT ?? 10497) !== 33071 ||
+                (sampler?.magFilter !== undefined && sampler.magFilter !== 9729) ||
+                (sampler?.minFilter !== undefined && sampler.minFilter !== 9985)
+            )
+                ignored.add("sampler");
+        }
         for (const [name, value] of Object.entries({
             metallicRoughnessTexture: pbr?.metallicRoughnessTexture,
             normalTexture: m.normalTexture,
@@ -367,10 +382,7 @@ export function parse(gltf: GltfJson, buffers: ArrayBuffer[]): GltfScene {
             if (value) ignored.add(name);
         return {
             color: (pbr?.baseColorFactor ?? [1, 1, 1, 1]) as GltfMaterial["color"],
-            image:
-                pbr?.baseColorTexture === undefined || (pbr.baseColorTexture.texCoord ?? 0) !== 0
-                    ? undefined
-                    : gltf.textures?.[pbr.baseColorTexture.index]?.source,
+            image,
             metallic: pbr?.metallicFactor ?? 1,
             roughness: pbr?.roughnessFactor ?? 1,
             emissive: (m.emissiveFactor ?? [0, 0, 0]) as GltfMaterial["emissive"],
