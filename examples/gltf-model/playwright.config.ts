@@ -3,7 +3,7 @@ import type { PlaywrightTestConfig } from "@playwright/test";
 
 export default {
     ...BROWSER_CONFIG,
-    testDir: ".",
+    testDir: "./tests",
     use: {
         ...BROWSER_CONFIG.use,
         viewport: { width: 1280, height: 720 },
@@ -11,7 +11,7 @@ export default {
         baseURL: "http://127.0.0.1:4179",
     },
     webServer: {
-        command: "bunx vite build && bunx vite preview --host 127.0.0.1 --port 4179 --strictPort",
+        command: "bunx vite --host 127.0.0.1 --port 4179 --strictPort",
         url: "http://127.0.0.1:4179",
         ...WEB_SERVER_CONFIG,
     },

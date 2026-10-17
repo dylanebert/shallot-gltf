@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 test("the package loads and presents the textured Khronos model", async ({ page }, info) => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await page.goto("/");
+    await page.goto("/tests/stepped.html");
     await page.waitForFunction(
         () => "captureModel" in window && document.querySelector("canvas")?.width === 1280,
     );
@@ -21,7 +21,7 @@ test("the package loads and presents the textured Khronos model", async ({ page 
         canvas.height = image.height;
         const context = canvas.getContext("2d")!;
         context.drawImage(image, 0, 0);
-        const rgba = context.getImageData(580, 230, 180, 65).data;
+        const rgba = context.getImageData(700, 250, 70, 110).data;
         image.close();
         let textured = 0;
         for (let i = 0; i < rgba.length; i += 4)
