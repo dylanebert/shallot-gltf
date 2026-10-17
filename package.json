@@ -1,0 +1,44 @@
+{
+    "name": "@dylanebert/shallot-gltf",
+    "version": "0.10.0-next.1",
+    "description": "Experimental static glTF decoding for Shallot.",
+    "license": "MIT",
+    "author": "Dylan Ebert <dylan.ebert@gmail.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/dylanebert/shallot-gltf.git"
+    },
+    "homepage": "https://github.com/dylanebert/shallot-gltf",
+    "bugs": "https://github.com/dylanebert/shallot-gltf/issues",
+    "keywords": [
+        "gltf",
+        "shallot-plugin"
+    ],
+    "type": "module",
+    "sideEffects": false,
+    "packageManager": "bun@1.4.3",
+    "engines": {
+        "bun": ">=1.4.3"
+    },
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "files": [
+        "src",
+        "!src/**/*.test.ts"
+    ],
+    "scripts": {
+        "lint": "biome check",
+        "test": "bun test --timeout=250"
+    },
+    "peerDependencies": {
+        "@dylanebert/shallot": "^0.10.0-next.2"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.5.13",
+        "@dylanebert/shallot": "0.10.0-next.2",
+        "@types/bun": "^1.4.3",
+        "three": "0.180.0",
+        "@types/three": "0.180.0"
+    }
+}
