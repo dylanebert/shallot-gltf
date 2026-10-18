@@ -63,6 +63,7 @@ for (const fixture of fixtures) {
                 addressModeV: wrap(ref.wrapT),
                 magFilter: filter(ref.magFilter),
                 minFilter: filter(ref.minFilter),
+                mipmapFilter: [1003, 1004, 1006, 1007].includes(ref.minFilter) ? 0 : 1,
             });
         }
         expect(result.instances.length).toBe(expected.length);

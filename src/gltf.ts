@@ -389,17 +389,10 @@ export function parse(gltf: GltfJson, buffers: ArrayBuffer[]): GltfScene {
             : wrap === 33648
               ? ImageAddressMode.MirrorRepeat
               : ImageAddressMode.Repeat;
-    const textures = (gltf.textures ?? []).map((texture, index) => {
+    const textures = (gltf.textures ?? []).map((texture) => {
         const sampler =
             texture.sampler === undefined ? undefined : gltf.samplers?.[texture.sampler];
-        // Shallot selects the nearest mip; glTF's unspecified min filter follows GLTFLoader.
         const min = sampler?.minFilter ?? 9987;
-        if (
-            materials.some((material) => material.texture === index) &&
-            min !== 9984 &&
-            min !== 9985
-        )
-            ignored.add("sampler.minFilter.mipSelection");
         return {
             image: texture.source,
             sampler: {
@@ -411,6 +404,8 @@ export function parse(gltf: GltfJson, buffers: ArrayBuffer[]): GltfScene {
                     min === 9728 || min === 9984 || min === 9986
                         ? ImageFilterMode.Nearest
                         : ImageFilterMode.Linear,
+                mipmapFilter:
+                    min === 9986 || min === 9987 ? ImageFilterMode.Linear : ImageFilterMode.Nearest,
             },
         };
     });

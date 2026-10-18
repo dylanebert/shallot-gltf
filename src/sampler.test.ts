@@ -10,22 +10,21 @@ function model(minFilter?: number): GltfJson {
     };
 }
 
-test("addressing and texel filters map independently of unsupported mip selection", () => {
-    for (const min of [9728, 9729, 9984, 9985, 9986, 9987]) {
+for (const min of [9728, 9729, 9984, 9985, 9986, 9987, undefined]) {
+    test(`minFilter ${min}: effective texel and mip filters without unsupported reports`, () => {
         const scene = parse(model(min), []);
         expect(scene.textures[0].sampler).toEqual({
             addressModeU: 2,
             addressModeV: 0,
             magFilter: 0,
-            minFilter: [9728, 9984, 9986].includes(min) ? 0 : 1,
+            minFilter: min !== undefined && [9728, 9984, 9986].includes(min) ? 0 : 1,
+            mipmapFilter: min === undefined || min === 9986 || min === 9987 ? 1 : 0,
         });
-        expect(scene.unsupported).toEqual(
-            [9984, 9985].includes(min) ? [] : ["sampler.minFilter.mipSelection"],
-        );
-    }
-});
+        expect(scene.unsupported).toEqual([]);
+    });
+}
 
-test("mip selection is reported only for mapped textures", () => {
+test("unused textures and unsupported UV sets do not report mip selection", () => {
     const json = model();
     json.materials = [];
     expect(parse(json, []).unsupported).toEqual([]);
@@ -44,5 +43,6 @@ test("two textures sharing one image retain distinct effective samplers", () => 
         addressModeV: 1,
         magFilter: 1,
         minFilter: 1,
+        mipmapFilter: 1,
     });
 });

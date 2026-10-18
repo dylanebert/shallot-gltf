@@ -75,6 +75,7 @@ const apps: App[] = [];
 const cameras: number[] = [];
 let loaded: Gltf;
 let device: GPUDevice;
+let adapter: GPUAdapter;
 function camera(world: World) {
     const eid = world.create();
     world.add(eid, Transform, { translation: [0, 0, 4] });
@@ -86,10 +87,11 @@ function camera(world: World) {
 }
 beforeAll(async () => {
     await setupGlobals();
-    const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter || adapter.info.device === "null-backend") {
+    const available = await navigator.gpu.requestAdapter();
+    if (!available || available.info.device === "null-backend") {
         throw new Error("GPU tests require a rendering adapter, not a missing or null device");
     }
+    adapter = available;
     device = await adapter.requestDevice({ requiredFeatures: ["indirect-first-instance"] });
     console.log(
         JSON.stringify({
@@ -293,4 +295,118 @@ test("sheared placement refuses with its node named before spawning", () => {
 });
 test("a foreign world refuses the handle", () => {
     expect(() => spawnGltfScene(apps[1].world, loaded)).toThrow("another world");
+});
+
+// Constant-color mip levels isolate mip selection from filtering within a level.
+// The loaded sampler/settings stay intact; only Dawn's missing bitmap decode is replaced.
+test("LINEAR_MIPMAP_NEAREST steps between levels while unspecified minFilter blends", async () => {
+    const samples: number[][] = [];
+    for (const minFilter of [9985, undefined]) {
+        for (const lod of [0.25, 0.75]) {
+            // Perspective at z=4, fov=60: 64 / (8*tan(30)) pixels per world unit.
+            const scale = (64 / (8 * Math.tan(Math.PI / 6)) / 8) * 2 ** lod;
+            const uv = new Float32Array(
+                Array.from(
+                    { length: 6 },
+                    (_, i) => positions[Math.floor(i / 2) * 3 + (i % 2)] * scale,
+                ),
+            );
+            const json = {
+                ...fixture,
+                buffers: [
+                    ...fixture.buffers,
+                    {
+                        uri: `data:application/octet-stream;base64,${Buffer.from(uv.buffer).toString("base64")}`,
+                        byteLength: uv.byteLength,
+                    },
+                ],
+                bufferViews: [...fixture.bufferViews, { buffer: 1, byteLength: uv.byteLength }],
+                accessors: [
+                    ...fixture.accessors,
+                    { bufferView: 1, componentType: 5126, count: 3, type: "VEC2" },
+                ],
+                meshes: [
+                    { primitives: [{ attributes: { POSITION: 0, TEXCOORD_0: 1 }, material: 0 }] },
+                ],
+                nodes: [{ mesh: 0 }],
+                materials: [
+                    {
+                        pbrMetallicRoughness: { baseColorTexture: { index: 0 } },
+                        extensions: { KHR_materials_unlit: {} },
+                    },
+                ],
+                textures: [{ source: 0, sampler: 0 }],
+                images: [{ uri: "data:image/png;base64,iVBORw0KGgo=" }],
+                samplers: [{ minFilter }],
+            };
+            let target = 0;
+            const app = await createApp({
+                defaults: false,
+                plugins: [
+                    StandardRenderingPlugin,
+                    MeshRenderPlugin,
+                    {
+                        name: "MipSelection",
+                        dependencies: [StandardRenderingPlugin, MeshRenderPlugin],
+                        async initialize(world) {
+                            camera(world);
+                            target = cameras.at(-1)!;
+                            const source = `data:model/gltf+json;base64,${Buffer.from(JSON.stringify(json)).toString("base64")}`;
+                            spawnGltfScene(world, await loadGltfScene(world, source));
+                        },
+                    },
+                ],
+                device,
+                adapter,
+            });
+            try {
+                const texture = device.createTexture({
+                    size: [8, 8, 1],
+                    mipLevelCount: 4,
+                    format: "rgba8unorm-srgb",
+                    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+                });
+                app.world.own(texture);
+                for (let level = 0; level < 4; level++) {
+                    const size = 8 >> level;
+                    const pixels = new Uint8Array(size * size * 4);
+                    for (let i = 0; i < pixels.length; i += 4)
+                        pixels.set(
+                            level === 0
+                                ? [255, 0, 0, 255]
+                                : level === 1
+                                  ? [0, 255, 0, 255]
+                                  : [0, 0, 255, 255],
+                            i,
+                        );
+                    device.queue.writeTexture(
+                        { texture, mipLevel: level },
+                        pixels,
+                        { bytesPerRow: size * 4, rowsPerImage: size },
+                        [size, size, 1],
+                    );
+                }
+                app.world.resource(ImageBindings).images = texture;
+                app.world.step(0);
+                app.world.step(0);
+                const { rgba } = await captureTexture(app.world, target);
+                samples.push(Array.from(rgba.slice((32 * 64 + 32) * 4, (32 * 64 + 32) * 4 + 3)));
+            } finally {
+                app.dispose();
+            }
+        }
+    }
+    expect(samples[0][0]).toBeGreaterThan(250);
+    expect(samples[0][1]).toBeLessThan(5);
+    expect(samples[1][0]).toBeLessThan(5);
+    expect(samples[1][1]).toBeGreaterThan(250);
+    for (const blended of samples.slice(2)) {
+        expect(blended[0]).toBeGreaterThan(100);
+        expect(blended[0]).toBeLessThan(240);
+        expect(blended[1]).toBeGreaterThan(100);
+        expect(blended[1]).toBeLessThan(240);
+        expect(blended[2]).toBeLessThan(5);
+    }
+    expect(samples[2][0]).toBeGreaterThan(samples[3][0]);
+    expect(samples[2][1]).toBeLessThan(samples[3][1]);
 });
