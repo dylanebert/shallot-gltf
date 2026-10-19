@@ -1,6 +1,6 @@
 {
     "name": "@dylanebert/shallot-gltf",
-    "version": "0.1.0-next.2",
+    "version": "0.1.0",
     "description": "Experimental static glTF loading and placement for Shallot.",
     "license": "MIT",
     "author": "Dylan Ebert <dylan.ebert@gmail.com>",
@@ -32,11 +32,11 @@
         "test": "bun test"
     },
     "peerDependencies": {
-        "@dylanebert/shallot": "^0.10.0-next.6"
+        "@dylanebert/shallot": "^0.10.0"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.5.13",
-        "@dylanebert/shallot": "0.10.0-next.6",
+        "@dylanebert/shallot": "0.10.0",
         "@playwright/test": "^1.64.1",
         "@types/bun": "^1.4.3",
         "@types/three": "0.180.0",

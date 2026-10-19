@@ -20,7 +20,6 @@ import { attachTexture, captureTexture, ImageBindings } from "@dylanebert/shallo
 import { MeshRenderPlugin, StandardRenderingPlugin } from "@dylanebert/shallot/standard/rendering";
 import { TIMEOUT } from "@dylanebert/shallot/testing";
 import { openGpuApp as createApp } from "@dylanebert/shallot/testing/gpu";
-import { setupGlobals } from "@dylanebert/shallot/webgpu";
 import { type Gltf, loadGltf, loadGltfScene, spawnGltfScene } from "../src";
 
 setDefaultTimeout(TIMEOUT.gpu);
@@ -74,8 +73,6 @@ const url = `data:model/gltf+json;base64,${Buffer.from(JSON.stringify(fixture)).
 const apps: App[] = [];
 const cameras: number[] = [];
 let loaded: Gltf;
-let device: GPUDevice;
-let adapter: GPUAdapter;
 function camera(world: World) {
     const eid = world.create();
     world.add(eid, Transform, { translation: [0, 0, 4] });
@@ -86,28 +83,10 @@ function camera(world: World) {
     cameras.push(eid);
 }
 beforeAll(async () => {
-    await setupGlobals();
-    const available = await navigator.gpu.requestAdapter();
-    if (!available || available.info.device === "null-backend") {
-        throw new Error("GPU tests require a rendering adapter, not a missing or null device");
-    }
-    adapter = available;
-    device = await adapter.requestDevice({ requiredFeatures: ["indirect-first-instance"] });
-    console.log(
-        JSON.stringify({
-            adapter: {
-                vendor: adapter.info.vendor,
-                architecture: adapter.info.architecture,
-                device: adapter.info.device,
-                description: adapter.info.description,
-            },
-            features: [...device.features],
-            limits: device.limits,
-        }),
-    );
     for (const direct of [false, true]) {
         const subject: Plugin = {
             name: "Fixture",
+            gpu: { features: ["indirect-first-instance"] },
             dependencies: [StandardRenderingPlugin, MeshRenderPlugin],
             async initialize(world) {
                 camera(world);
@@ -145,9 +124,13 @@ beforeAll(async () => {
         const app = await createApp({
             defaults: false,
             plugins: [StandardRenderingPlugin, MeshRenderPlugin, subject],
-            device,
-            adapter,
         });
+        if (!direct) {
+            const { device, adapter } = app.world.gpu;
+            console.log(
+                JSON.stringify({ adapter, features: [...device.features], limits: device.limits }),
+            );
+        }
         apps.push(app);
         app.world.step(0);
         app.world.step(0);
@@ -191,9 +174,8 @@ beforeAll(async () => {
         const app = await createApp({
             defaults: false,
             plugins: [StandardRenderingPlugin, MeshRenderPlugin, subject],
-            device,
-            adapter,
         });
+        const { device } = app.world.gpu;
         // Headless Dawn has no bitmap decoder; retain registered settings with decoded fixture pixels.
         const texture = device.createTexture({
             size: [2, 2, 1],
@@ -216,7 +198,6 @@ beforeAll(async () => {
 }, TIMEOUT.startup);
 afterAll(() => {
     for (const app of apps) app.dispose();
-    device?.destroy();
 });
 test("loaded primitive placement and material draw the same pixels as direct authoring", async () => {
     const pixels = await Promise.all(
@@ -356,9 +337,8 @@ test("LINEAR_MIPMAP_NEAREST steps between levels while unspecified minFilter ble
                         },
                     },
                 ],
-                device,
-                adapter,
             });
+            const { device } = app.world.gpu;
             try {
                 const texture = device.createTexture({
                     size: [8, 8, 1],
