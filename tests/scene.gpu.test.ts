@@ -2,7 +2,9 @@ import { afterAll, beforeAll, expect, setDefaultTimeout, spyOn, test } from "bun
 import {
     type App,
     Camera,
+    DirectionalLight,
     ImageAddressMode,
+    lookAtRotation,
     Materials,
     Meshes,
     MeshInstance,
@@ -389,4 +391,70 @@ test("LINEAR_MIPMAP_NEAREST steps between levels while unspecified minFilter ble
     }
     expect(samples[2][0]).toBeGreaterThan(samples[3][0]);
     expect(samples[2][1]).toBeLessThan(samples[3][1]);
+});
+
+// The synthetic plane has no textures: lighting isolates the back-face normal flip.
+test("loaded double-sided back faces draw and light like direct authoring; single-sided culls", async () => {
+    const samples: number[][] = [];
+    for (const mode of ["loaded", "direct", "single", "unflipped"] as const) {
+        let target = 0;
+        const app = await createApp({
+            defaults: false,
+            plugins: [
+                StandardRenderingPlugin,
+                MeshRenderPlugin,
+                {
+                    name: "DoubleSided",
+                    dependencies: [StandardRenderingPlugin, MeshRenderPlugin],
+                    async initialize(world) {
+                        camera(world);
+                        target = cameras.at(-1)!;
+                        world.add(target, Transform, {
+                            translation: [0, 0, -4],
+                            rotation: lookAtRotation(0, 0, -4, 0, 0, 0),
+                        });
+                        const sun = world.create();
+                        world.add(sun, Transform, { rotation: lookAtRotation(0, 0, 0, 0, 0, 1) });
+                        world.add(sun, DirectionalLight, { illuminance: 1500 });
+                        const source = new URL("./fixtures/double-sided.gltf", import.meta.url);
+                        if (mode === "loaded" || mode === "single") {
+                            const scene = await loadGltfScene(world, source);
+                            spawnGltfScene(world, scene, {
+                                translation: mode === "single" ? [-3, 0, 0] : [0, 0, 0],
+                            });
+                        } else {
+                            const scene = await loadGltf(source);
+                            const mesh = world.resource(Meshes).add(scene.meshes[0]);
+                            const material = world.resource(Materials).add(
+                                StandardMaterial({
+                                    baseColor: [0.8, 0.6, 0.4, 1],
+                                    metallic: 0,
+                                    perceptualRoughness: 0.6,
+                                    doubleSided: mode === "direct",
+                                }),
+                                { cullMode: "none" },
+                            );
+                            const eid = world.create();
+                            world.add(eid, Transform);
+                            world.add(eid, MeshInstance, { mesh });
+                            world.add(eid, MeshMaterial, material);
+                        }
+                    },
+                },
+            ],
+        });
+        try {
+            app.world.step(0);
+            app.world.step(0);
+            const { rgba } = await captureTexture(app.world, target);
+            const center = Array.from(rgba.slice((32 * 64 + 32) * 4, (32 * 64 + 32) * 4 + 3));
+            samples.push(center);
+            if (mode === "single") expect(center).toEqual(Array.from(rgba.slice(0, 3)));
+        } finally {
+            app.dispose();
+        }
+    }
+    expect(samples[0]).toEqual(samples[1]);
+    expect(samples[0][0]).toBeGreaterThan(samples[2][0] + 20);
+    expect(samples[0][0]).toBeGreaterThan(samples[3][0] + 20);
 });

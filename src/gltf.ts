@@ -122,6 +122,7 @@ export interface GltfMaterial {
     alphaMode: "OPAQUE" | "MASK" | "BLEND";
     cutoff: number;
     unlit: boolean;
+    doubleSided: boolean;
 }
 export interface GltfScene {
     meshes: GltfMesh[];
@@ -369,7 +370,6 @@ export function parse(gltf: GltfJson, buffers: ArrayBuffer[]): GltfScene {
             normalTexture: m.normalTexture,
             occlusionTexture: m.occlusionTexture,
             emissiveTexture: m.emissiveTexture,
-            doubleSided: m.doubleSided,
         }))
             if (value) ignored.add(name);
         return {
@@ -381,6 +381,7 @@ export function parse(gltf: GltfJson, buffers: ArrayBuffer[]): GltfScene {
             alphaMode: m.alphaMode ?? "OPAQUE",
             cutoff: m.alphaCutoff ?? 0.5,
             unlit: m.extensions?.KHR_materials_unlit !== undefined,
+            doubleSided: m.doubleSided ?? false,
         };
     });
     const addressMode = (wrap = 10497) =>

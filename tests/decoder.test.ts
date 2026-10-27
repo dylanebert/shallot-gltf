@@ -2,7 +2,13 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { LoadingManager, Mesh, MeshBasicMaterial, type MeshStandardMaterial } from "three";
+import {
+    DoubleSide,
+    LoadingManager,
+    Mesh,
+    MeshBasicMaterial,
+    type MeshStandardMaterial,
+} from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { loadGltf, parse } from "../src";
 
@@ -20,6 +26,7 @@ const localFetch: typeof fetch = (async (input: URL | string) => {
 }) as typeof fetch;
 const fixtures = [
     "default-sampler.gltf",
+    "double-sided.gltf",
     "BoxInterleaved/glTF/BoxInterleaved.gltf",
     "BoxTextured/glTF/BoxTextured.gltf",
     "BoxTextured/glTF-Binary/BoxTextured.glb",
@@ -117,6 +124,8 @@ for (const fixture of fixtures) {
                 );
             }
             expect(material.unlit).toBe(unlit);
+            expect(material.doubleSided).toBe(ref.side === DoubleSide);
+            expect(result.unsupported).not.toContain("doubleSided");
         }
     });
 }

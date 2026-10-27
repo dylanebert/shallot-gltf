@@ -67,8 +67,10 @@ export async function loadGltfScene(
                 perceptualRoughness: material.roughness,
                 emissive: material.emissive,
                 unlit: material.unlit,
+                doubleSided: material.doubleSided,
             }),
             {
+                cullMode: material.doubleSided ? "none" : "back",
                 alphaMode:
                     material.alphaMode === "MASK"
                         ? AlphaMode.Mask(material.cutoff)
