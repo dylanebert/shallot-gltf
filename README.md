@@ -14,7 +14,7 @@ spawnGltfScene(world, model, { translation: [0, 0, 0] });
 
 See [`examples/gltf-model`](examples/gltf-model).
 
-Meshes, base colour textures and `StandardMaterial` factors. Missing required extensions refuse by name; anything else ignored is listed in `model.unsupported`. No animation, skinning, lights, cameras, or Draco, meshopt and KTX2 compression.
+Meshes, base color textures and `StandardMaterial` factors. Missing required extensions refuse by name; anything else ignored is listed in `model.unsupported`. No animation, skinning, lights, cameras, or Draco, meshopt and KTX2 compression.
 
 | shallot-gltf | shallot |
 | --- | --- |
