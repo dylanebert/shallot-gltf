@@ -21,5 +21,6 @@ Meshes, base color textures and `StandardMaterial` factors. Missing required ext
 | 0.1.0-next.1 | 0.10.0-next.5 and later 0.10 |
 | 0.1.0-next.2 | 0.10.0-next.6 and later 0.10 |
 | 0.1.0 | ^0.10.0 |
+| 0.2.0 | ^0.10.2 |
 
 changing it: [`CONTRIBUTING.md`](CONTRIBUTING.md). mit.
